@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creature Leggendarie - Commander</title>
+    <link rel="stylesheet" href="style.css">
+
+    <script type="module">
+        // Importa le funzioni necessarie
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+        import { getFirestore, collection, doc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+        // La tua configurazione dell'app web Firebase (COPIA QUI LE TUE CREDENZIALI!)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBv-uHG8nuiw_DnYDB9NCTs8UecR4If47k",
+            authDomain: "prova-d1f53.firebaseapp.com",
+            projectId: "prova-d1f53",
+            storageBucket: "prova-d1f53.firebasestorage.app",
+            messagingSenderId: "932777085308",
+            appId: "1:932777085308:web:73d7f752e82b3cf5007cf9",
+            measurementId: "G-804X6JTF5Z"
+        };
+
+        // Inizializza Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Espone le variabili in modo che lo script non-module possa accedervi
+        window.firebaseDb = db;
+        window.firebaseCollection = collection;
+        window.firebaseDoc = doc;
+        window.firebaseGetDocs = getDocs;
+        window.firebaseUpdateDoc = updateDoc;
+    </script>
+</head>
+<body>
+    <h1>Creature Leggendarie Legali in Commander</h1>
+    <div id="cards-container" class="container">
+        </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const cardsContainer = document.getElementById('cards-container');
+            const db = window.firebaseDb;
+            const collection = window.firebaseCollection;
+            const doc = window.firebaseDoc;
+            const getDocs = window.firebaseGetDocs;
+            const updateDoc = window.firebaseUpdateDoc;
+
+            const cardsCollectionRef = collection(db, 'commanderCards');
+
+            // Funzione per aggiornare lo stato di un checkbox in Firestore
+            async function updateCardStatus(cardName, field, isChecked) {
+                try {
+                    // Crea un riferimento al documento specifico per la carta
+                    const cardDocRef = doc(db, 'commanderCards', cardName);
+                    const updateData = {};
+                    updateData[field] = isChecked;
+                    await updateDoc(cardDocRef, updateData);
+                    console.log(`Stato di '${cardName}' - ${field} aggiornato su Firestore: ${isChecked}`);
+                    
+                    // Aggiorna lo stato visivo dopo l'aggiornamento del database
+                    renderSingleCardVisual(cardName);
+                } catch (error) {
+                    console.error("Errore nell'aggiornamento dello stato della carta su Firestore:", error);
+                }
+            }
+
+            // Funzione per aggiornare lo stato visivo di una singola carta
+            function renderSingleCardVisual(cardName) {
+                const cardDiv = document.querySelector(`.card[data-name="${cardName}"]`);
+                if (!cardDiv) return;
+
+                const seenCheckbox = cardDiv.querySelector('input[data-type="seen"]');
+                const capturedCheckbox = cardDiv.querySelector('input[data-type="captured"]');
+                const image = cardDiv.querySelector('.card-image');
+
+                const isSeen = seenCheckbox.checked;
+                const isCaptured = capturedCheckbox.checked;
+
+                // Logica per le configurazioni desiderate
+                if (isCaptured) {
+                    image.style.filter = 'none'; // Colori originali
+                    seenCheckbox.checked = true; // "Visto" deve essere sempre vero se "Catturato" è vero
+                } else if (isSeen) {
+                    image.style.filter = 'grayscale(100%)'; // Bianco e nero
+                } else {
+                    image.style.filter = 'brightness(0)'; // Completamente nero
+                }
+            }
+            
+            async function renderCards() {
+                cardsContainer.innerHTML = '';
+                try {
+                    const querySnapshot = await getDocs(cardsCollectionRef);
+                    const cardsData = querySnapshot.docs.map(doc => doc.data());
+
+                    cardsData.forEach(card => {
+                        const cardDiv = document.createElement('div');
+                        cardDiv.className = 'card';
+                        cardDiv.dataset.name = card.name;
+                        
+                        cardDiv.innerHTML = `
+                            <a href="${card.scryfall_uri}" target="_blank">
+                                <img src="${card.image_url}" alt="${card.name}" class="card-image" loading="lazy">
+                            </a>
+                            <h3>${card.name}</h3>
+                            <p><strong>${card.type_line}</strong></p>
+                            <p>${card.oracle_text.replace(/\n/g, '<br>')}</p>
+                            <div class="checkbox-group">
+                                <label>
+                                    <input type="checkbox" data-name="${card.name}" data-type="seen" ${card.seen ? 'checked' : ''}>
+                                    Visto
+                                </label>
+                                <label>
+                                    <input type="checkbox" data-name="${card.name}" data-type="captured" ${card.captured ? 'checked' : ''}>
+                                    Catturato
+                                </label>
+                            </div>
+                        `;
+
+                        cardsContainer.appendChild(cardDiv);
+
+                        // Inizializza gli event listeners e lo stato visivo
+                        const seenCheckbox = cardDiv.querySelector('input[data-type="seen"]');
+                        const capturedCheckbox = cardDiv.querySelector('input[data-type="captured"]');
+                        
+                        seenCheckbox.addEventListener('change', (event) => {
+                            updateCardStatus(card.name, 'seen', event.target.checked);
+                        });
+
+                        capturedCheckbox.addEventListener('change', (event) => {
+                            if (event.target.checked) {
+                                seenCheckbox.checked = true; // Se catturato, anche visto è true
+                                updateCardStatus(card.name, 'seen', true);
+                            }
+                            updateCardStatus(card.name, 'captured', event.target.checked);
+                        });
+
+                        // Imposta lo stato visivo iniziale
+                        renderSingleCardVisual(card.name);
+                    });
+                } catch (error) {
+                    console.error("Errore nel caricamento delle carte da Firestore:", error);
+                    cardsContainer.innerHTML = "<p>Impossibile caricare le carte. Controlla la console del browser per i dettagli.</p>";
+                }
+            }
+            renderCards();
+        });
+    </script>
+</body>
+</html>
