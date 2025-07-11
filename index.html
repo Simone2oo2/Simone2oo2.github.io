@@ -54,7 +54,9 @@
             async function updateCardStatus(cardName, field, isChecked) {
                 try {
                     // Crea un riferimento al documento specifico per la carta
-                    const cardDocRef = doc(db, 'commanderCards', cardName);
+                    // Usiamo lo stesso ID del documento che hai creato con lo script Python
+                    const documentId = cardName.replace('/', '-');
+                    const cardDocRef = doc(db, 'commanderCards', documentId);
                     const updateData = {};
                     updateData[field] = isChecked;
                     await updateDoc(cardDocRef, updateData);
@@ -69,7 +71,8 @@
 
             // Funzione per aggiornare lo stato visivo di una singola carta
             function renderSingleCardVisual(cardName) {
-                const cardDiv = document.querySelector(`.card[data-name="${cardName}"]`);
+                // CORREZIONE: Usiamo CSS.escape() per gestire i caratteri speciali
+                const cardDiv = document.querySelector(`.card[data-name="${CSS.escape(cardName)}"]`);
                 if (!cardDiv) return;
 
                 const seenCheckbox = cardDiv.querySelector('input[data-type="seen"]');
@@ -79,7 +82,6 @@
                 const isSeen = seenCheckbox.checked;
                 const isCaptured = capturedCheckbox.checked;
 
-                // Logica per le configurazioni desiderate
                 if (isCaptured) {
                     image.style.filter = 'none'; // Colori originali
                     seenCheckbox.checked = true; // "Visto" deve essere sempre vero se "Catturato" è vero
@@ -99,6 +101,8 @@
                     cardsData.forEach(card => {
                         const cardDiv = document.createElement('div');
                         cardDiv.className = 'card';
+                        
+                        // CORREZIONE: Aggiungi l'attributo data-name con il nome originale
                         cardDiv.dataset.name = card.name;
                         
                         cardDiv.innerHTML = `
@@ -122,7 +126,6 @@
 
                         cardsContainer.appendChild(cardDiv);
 
-                        // Inizializza gli event listeners e lo stato visivo
                         const seenCheckbox = cardDiv.querySelector('input[data-type="seen"]');
                         const capturedCheckbox = cardDiv.querySelector('input[data-type="captured"]');
                         
@@ -132,13 +135,12 @@
 
                         capturedCheckbox.addEventListener('change', (event) => {
                             if (event.target.checked) {
-                                seenCheckbox.checked = true; // Se catturato, anche visto è true
+                                seenCheckbox.checked = true;
                                 updateCardStatus(card.name, 'seen', true);
                             }
                             updateCardStatus(card.name, 'captured', event.target.checked);
                         });
-
-                        // Imposta lo stato visivo iniziale
+                        
                         renderSingleCardVisual(card.name);
                     });
                 } catch (error) {
