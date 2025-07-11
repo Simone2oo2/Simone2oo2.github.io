@@ -11,7 +11,8 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
         import { getFirestore, collection, doc, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
 
-        // La tua configurazione dell'app web Firebase (COPIA QUI LE TUE CREDENZIALI!)
+        // La tua configurazione dell'app web Firebase
+        // Questa chiave è pubblica ma protetta dalle restrizioni che hai impostato
         const firebaseConfig = {
             apiKey: "AIzaSyBv-uHG8nuiw_DnYDB9NCTs8UecR4If47k",
             authDomain: "prova-d1f53.firebaseapp.com",
@@ -53,8 +54,6 @@
             // Funzione per aggiornare lo stato di un checkbox in Firestore
             async function updateCardStatus(cardName, field, isChecked) {
                 try {
-                    // Crea un riferimento al documento specifico per la carta
-                    // Usiamo lo stesso ID del documento che hai creato con lo script Python
                     const documentId = cardName.replace('/', '-');
                     const cardDocRef = doc(db, 'commanderCards', documentId);
                     const updateData = {};
@@ -62,7 +61,6 @@
                     await updateDoc(cardDocRef, updateData);
                     console.log(`Stato di '${cardName}' - ${field} aggiornato su Firestore: ${isChecked}`);
                     
-                    // Aggiorna lo stato visivo dopo l'aggiornamento del database
                     renderSingleCardVisual(cardName);
                 } catch (error) {
                     console.error("Errore nell'aggiornamento dello stato della carta su Firestore:", error);
@@ -71,7 +69,6 @@
 
             // Funzione per aggiornare lo stato visivo di una singola carta
             function renderSingleCardVisual(cardName) {
-                // CORREZIONE: Usiamo CSS.escape() per gestire i caratteri speciali
                 const cardDiv = document.querySelector(`.card[data-name="${CSS.escape(cardName)}"]`);
                 if (!cardDiv) return;
 
@@ -101,8 +98,6 @@
                     cardsData.forEach(card => {
                         const cardDiv = document.createElement('div');
                         cardDiv.className = 'card';
-                        
-                        // CORREZIONE: Aggiungi l'attributo data-name con il nome originale
                         cardDiv.dataset.name = card.name;
                         
                         cardDiv.innerHTML = `
